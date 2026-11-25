@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ==========================================
-# KONFIGURASI WEBSITE
+# 1. KONFIGURASI WEBSITE
 # ==========================================
 
 st.set_page_config(
@@ -14,15 +14,16 @@ st.set_page_config(
 )
 
 st.title("🥗 KALKULATOR KALORI PINTAR")
-st.write(
+st.subheader(
     "Sistem Penentuan Kebutuhan Kalori Harian "
     "Menggunakan Metode Fuzzy Mamdani"
 )
 
 st.divider()
 
+
 # ==========================================
-# FUNGSI KEANGGOTAAN FUZZY
+# 2. FUNGSI KEANGGOTAAN FUZZY
 # ==========================================
 
 def trimf(x, a, b, c):
@@ -64,45 +65,59 @@ def trapmf(x, a, b, c, d):
 
 
 # ==========================================
-# VARIABEL FUZZY
+# 3. VARIABEL FUZZY
 # ==========================================
 
-# Berat badan (kg)
+# Variabel berat badan
 x_berat = np.linspace(30, 120, 500)
 
-berat_ringan = trapmf(x_berat, 30, 30, 45, 60)
-berat_normal = trimf(x_berat, 50, 70, 90)
-berat_berat = trapmf(x_berat, 80, 100, 120, 120)
+berat_ringan = trapmf(
+    x_berat, 30, 30, 45, 60
+)
 
-# Aktivitas fisik (faktor aktivitas)
+berat_normal = trimf(
+    x_berat, 50, 70, 90
+)
+
+berat_berat = trapmf(
+    x_berat, 80, 100, 120, 120
+)
+
+
+# Variabel aktivitas fisik
 x_aktivitas = np.linspace(1.2, 2.0, 500)
 
 aktivitas_rendah = trapmf(
     x_aktivitas, 1.2, 1.2, 1.35, 1.5
 )
+
 aktivitas_sedang = trimf(
     x_aktivitas, 1.4, 1.6, 1.8
 )
+
 aktivitas_tinggi = trapmf(
     x_aktivitas, 1.7, 1.85, 2.0, 2.0
 )
 
-# Output kebutuhan kalori (kkal)
+
+# Variabel output kebutuhan kalori
 x_kalori = np.linspace(1000, 4000, 1000)
 
 kalori_rendah = trapmf(
     x_kalori, 1000, 1000, 1500, 2100
 )
+
 kalori_sedang = trimf(
     x_kalori, 1800, 2500, 3200
 )
+
 kalori_tinggi = trapmf(
     x_kalori, 2800, 3500, 4000, 4000
 )
 
 
 # ==========================================
-# ATURAN IF-THEN FUZZY MAMDANI
+# 4. ATURAN IF-THEN FUZZY MAMDANI
 # ==========================================
 
 aturan_fuzzy = [
@@ -121,74 +136,102 @@ aturan_fuzzy = [
 
 
 # ==========================================
-# PROSES FUZZY MAMDANI
+# 5. PROSES FUZZY MAMDANI
 # ==========================================
 
 def proses_mamdani(berat, aktivitas):
 
-    # Fuzzifikasi berat
+    # FUZZIFIKASI BERAT BADAN
     mu_berat = {
         "Ringan": float(trapmf(
-            np.array([berat]), 30, 30, 45, 60
+            np.array([berat]),
+            30, 30, 45, 60
         )[0]),
+
         "Normal": float(trimf(
-            np.array([berat]), 50, 70, 90
+            np.array([berat]),
+            50, 70, 90
         )[0]),
+
         "Berat": float(trapmf(
-            np.array([berat]), 80, 100, 120, 120
+            np.array([berat]),
+            80, 100, 120, 120
         )[0])
     }
 
-    # Fuzzifikasi aktivitas
+    # FUZZIFIKASI AKTIVITAS
     mu_aktivitas = {
         "Rendah": float(trapmf(
-            np.array([aktivitas]), 1.2, 1.2, 1.35, 1.5
+            np.array([aktivitas]),
+            1.2, 1.2, 1.35, 1.5
         )[0]),
+
         "Sedang": float(trimf(
-            np.array([aktivitas]), 1.4, 1.6, 1.8
+            np.array([aktivitas]),
+            1.4, 1.6, 1.8
         )[0]),
+
         "Tinggi": float(trapmf(
-            np.array([aktivitas]), 1.7, 1.85, 2.0, 2.0
+            np.array([aktivitas]),
+            1.7, 1.85, 2.0, 2.0
         )[0])
     }
 
-    # Inferensi dan agregasi
-    hasil_agregasi = np.zeros_like(x_kalori)
-    hasil_aturan = []
-
+    # FUNGSI OUTPUT
     output_fuzzy = {
         "Rendah": kalori_rendah,
         "Sedang": kalori_sedang,
         "Tinggi": kalori_tinggi
     }
 
-    for no, (b, a, k) in enumerate(aturan_fuzzy, start=1):
+    # INFERENSI DAN AGREGASI
+    hasil_agregasi = np.zeros_like(x_kalori)
+    hasil_aturan = []
 
-        alpha = min(mu_berat[b], mu_aktivitas[a])
+    for no, (b, a, k) in enumerate(
+        aturan_fuzzy, start=1
+    ):
 
-        hasil_implikasi = np.minimum(
-            alpha, output_fuzzy[k]
+        # Operator MIN
+        alpha = min(
+            mu_berat[b],
+            mu_aktivitas[a]
         )
 
+        # Implikasi Mamdani
+        hasil_implikasi = np.minimum(
+            alpha,
+            output_fuzzy[k]
+        )
+
+        # Agregasi menggunakan MAX
         hasil_agregasi = np.maximum(
-            hasil_agregasi, hasil_implikasi
+            hasil_agregasi,
+            hasil_implikasi
         )
 
         hasil_aturan.append({
             "Aturan": f"R{no}",
             "IF": f"Berat {b} AND Aktivitas {a}",
             "THEN": f"Kalori {k}",
-            "Alpha": alpha
+            "Alpha": round(alpha, 3)
         })
 
-    # Defuzzifikasi metode Centroid
+    # DEFUZZIFIKASI CENTROID
     penyebut = np.sum(hasil_agregasi)
 
     if penyebut == 0:
-        return None, mu_berat, mu_aktivitas, hasil_agregasi, hasil_aturan
+        return (
+            None,
+            mu_berat,
+            mu_aktivitas,
+            hasil_agregasi,
+            hasil_aturan
+        )
 
     hasil_akhir = (
-        np.sum(x_kalori * hasil_agregasi) / penyebut
+        np.sum(x_kalori * hasil_agregasi)
+        / penyebut
     )
 
     return (
@@ -201,7 +244,7 @@ def proses_mamdani(berat, aktivitas):
 
 
 # ==========================================
-# INPUT PENGGUNA
+# 6. INPUT DATA PENGGUNA
 # ==========================================
 
 st.subheader("📋 Masukkan Data Pengguna")
@@ -231,24 +274,105 @@ aktivitas = float(
     aktivitas_pilihan.split("(")[1].replace(")", "")
 )
 
-if st.button("Hitung Kebutuhan Kalori", type="primary"):
 
-    hasil, mu_berat, mu_aktivitas, agregasi, hasil_aturan = (
-        proses_mamdani(berat, aktivitas)
-    )
+# ==========================================
+# 7. STATUS FUZZY SAAT INI
+# ==========================================
+
+# Derajat keanggotaan berat badan
+mu_berat_status = {
+    "RINGAN": float(trapmf(
+        np.array([berat]),
+        30, 30, 45, 60
+    )[0]),
+
+    "NORMAL": float(trimf(
+        np.array([berat]),
+        50, 70, 90
+    )[0]),
+
+    "BERAT": float(trapmf(
+        np.array([berat]),
+        80, 100, 120, 120
+    )[0])
+}
+
+
+# Derajat keanggotaan aktivitas
+mu_aktivitas_status = {
+    "RENDAH": float(trapmf(
+        np.array([aktivitas]),
+        1.2, 1.2, 1.35, 1.5
+    )[0]),
+
+    "SEDANG": float(trimf(
+        np.array([aktivitas]),
+        1.4, 1.6, 1.8
+    )[0]),
+
+    "TINGGI": float(trapmf(
+        np.array([aktivitas]),
+        1.7, 1.85, 2.0, 2.0
+    )[0])
+}
+
+
+# Menentukan kategori terbesar
+kategori_berat = max(
+    mu_berat_status,
+    key=mu_berat_status.get
+)
+
+kategori_aktivitas = max(
+    mu_aktivitas_status,
+    key=mu_aktivitas_status.get
+)
+
+nilai_berat = mu_berat_status[kategori_berat]
+nilai_aktivitas = mu_aktivitas_status[kategori_aktivitas]
+
+
+# Menampilkan status fuzzy
+st.markdown("### 💡 Status Fuzzy Saat Ini")
+
+st.info(
+    f"Berat Badan masuk kategori **{kategori_berat}** "
+    f"(μ = {nilai_berat:.2f})\n\n"
+    f"Aktivitas masuk kategori **{kategori_aktivitas}** "
+    f"(μ = {nilai_aktivitas:.2f})"
+)
+
+
+# ==========================================
+# 8. TOMBOL HITUNG KEBUTUHAN KALORI
+# ==========================================
+
+if st.button(
+    "Hitung Kebutuhan Kalori",
+    type="primary"
+):
+
+    (
+        hasil,
+        mu_berat,
+        mu_aktivitas,
+        agregasi,
+        hasil_aturan
+    ) = proses_mamdani(berat, aktivitas)
 
     if hasil is None:
+
         st.error(
-            "Data tidak menghasilkan aturan fuzzy aktif. "
-            "Periksa kembali rentang fungsi keanggotaan."
+            "Perhitungan tidak menghasilkan aturan fuzzy aktif."
         )
 
     else:
+
         st.divider()
 
-        # ======================================
+        # ==================================
         # HASIL PERHITUNGAN
-        # ======================================
+        # ==================================
 
         st.subheader("📊 Hasil Perhitungan")
 
@@ -257,15 +381,13 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
             f"{hasil:.2f} kkal/hari"
         )
 
-        st.info(
-            "Hasil ini merupakan estimasi dari model fuzzy "
-            "berdasarkan berat badan dan tingkat aktivitas "
-            "yang dimasukkan."
+        st.success(
+            "Perhitungan Fuzzy Mamdani berhasil dilakukan!"
         )
 
-        # ======================================
+        # ==================================
         # HASIL FUZZIFIKASI
-        # ======================================
+        # ==================================
 
         st.subheader("1. Hasil Fuzzifikasi")
 
@@ -273,24 +395,21 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
 
         with col1:
             st.write("**Derajat Keanggotaan Berat Badan**")
+
             for nama, nilai in mu_berat.items():
                 st.write(f"{nama}: {nilai:.3f}")
 
         with col2:
             st.write("**Derajat Keanggotaan Aktivitas**")
+
             for nama, nilai in mu_aktivitas.items():
                 st.write(f"{nama}: {nilai:.3f}")
 
-        # ======================================
+        # ==================================
         # ATURAN IF-THEN
-        # ======================================
+        # ==================================
 
         st.subheader("2. Aturan IF-THEN")
-
-        st.write(
-            "Nilai Alpha merupakan hasil operasi MIN "
-            "dari derajat keanggotaan kedua input."
-        )
 
         st.dataframe(
             hasil_aturan,
@@ -298,17 +417,39 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
             hide_index=True
         )
 
-        # ======================================
-        # GRAFIK KEANGGOTAAN BERAT
-        # ======================================
+        # ==================================
+        # GRAFIK BERAT BADAN
+        # ==================================
 
-        st.subheader("3. Grafik Fungsi Keanggotaan Berat Badan")
+        st.subheader(
+            "3. Grafik Fungsi Keanggotaan Berat Badan"
+        )
 
         fig1, ax1 = plt.subplots(figsize=(9, 4))
 
-        ax1.plot(x_berat, berat_ringan, label="Ringan")
-        ax1.plot(x_berat, berat_normal, label="Normal")
-        ax1.plot(x_berat, berat_berat, label="Berat")
+        ax1.plot(
+            x_berat,
+            berat_ringan,
+            label="Ringan"
+        )
+
+        ax1.plot(
+            x_berat,
+            berat_normal,
+            label="Normal"
+        )
+
+        ax1.plot(
+            x_berat,
+            berat_berat,
+            label="Berat"
+        )
+
+        ax1.axvline(
+            berat,
+            linestyle=":",
+            label=f"Input {berat} kg"
+        )
 
         ax1.set_xlabel("Berat Badan (kg)")
         ax1.set_ylabel("Derajat Keanggotaan")
@@ -320,25 +461,38 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
         st.pyplot(fig1)
         plt.close(fig1)
 
-        # ======================================
-        # GRAFIK KEANGGOTAAN AKTIVITAS
-        # ======================================
+        # ==================================
+        # GRAFIK AKTIVITAS
+        # ==================================
 
-        st.subheader("4. Grafik Fungsi Keanggotaan Aktivitas")
+        st.subheader(
+            "4. Grafik Fungsi Keanggotaan Aktivitas"
+        )
 
         fig2, ax2 = plt.subplots(figsize=(9, 4))
 
         ax2.plot(
-            x_aktivitas, aktivitas_rendah,
+            x_aktivitas,
+            aktivitas_rendah,
             label="Rendah"
         )
+
         ax2.plot(
-            x_aktivitas, aktivitas_sedang,
+            x_aktivitas,
+            aktivitas_sedang,
             label="Sedang"
         )
+
         ax2.plot(
-            x_aktivitas, aktivitas_tinggi,
+            x_aktivitas,
+            aktivitas_tinggi,
             label="Tinggi"
+        )
+
+        ax2.axvline(
+            aktivitas,
+            linestyle=":",
+            label=f"Input {aktivitas}"
         )
 
         ax2.set_xlabel("Faktor Aktivitas")
@@ -351,24 +505,31 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
         st.pyplot(fig2)
         plt.close(fig2)
 
-        # ======================================
+        # ==================================
         # GRAFIK OUTPUT KALORI
-        # ======================================
+        # ==================================
 
-        st.subheader("5. Grafik Fungsi Keanggotaan Kalori")
+        st.subheader(
+            "5. Grafik Fungsi Keanggotaan Kalori"
+        )
 
         fig3, ax3 = plt.subplots(figsize=(9, 4))
 
         ax3.plot(
-            x_kalori, kalori_rendah,
+            x_kalori,
+            kalori_rendah,
             label="Kalori Rendah"
         )
+
         ax3.plot(
-            x_kalori, kalori_sedang,
+            x_kalori,
+            kalori_sedang,
             label="Kalori Sedang"
         )
+
         ax3.plot(
-            x_kalori, kalori_tinggi,
+            x_kalori,
+            kalori_tinggi,
             label="Kalori Tinggi"
         )
 
@@ -382,25 +543,35 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
         st.pyplot(fig3)
         plt.close(fig3)
 
-        # ======================================
-        # GRAFIK HASIL INFERENSI
-        # ======================================
+        # ==================================
+        # GRAFIK INFERENSI DAN DEFUZZIFIKASI
+        # ==================================
 
-        st.subheader("6. Grafik Inferensi dan Defuzzifikasi")
+        st.subheader(
+            "6. Grafik Inferensi dan Defuzzifikasi"
+        )
 
         fig4, ax4 = plt.subplots(figsize=(9, 4))
 
         ax4.plot(
-            x_kalori, kalori_rendah,
-            "--", label="Kalori Rendah"
+            x_kalori,
+            kalori_rendah,
+            "--",
+            label="Kalori Rendah"
         )
+
         ax4.plot(
-            x_kalori, kalori_sedang,
-            "--", label="Kalori Sedang"
+            x_kalori,
+            kalori_sedang,
+            "--",
+            label="Kalori Sedang"
         )
+
         ax4.plot(
-            x_kalori, kalori_tinggi,
-            "--", label="Kalori Tinggi"
+            x_kalori,
+            kalori_tinggi,
+            "--",
+            label="Kalori Tinggi"
         )
 
         ax4.fill_between(
@@ -419,29 +590,37 @@ if st.button("Hitung Kebutuhan Kalori", type="primary"):
         ax4.set_xlabel("Kebutuhan Kalori (kkal)")
         ax4.set_ylabel("Derajat Keanggotaan")
         ax4.set_ylim(0, 1.1)
-        ax4.set_title("Hasil Inferensi dan Defuzzifikasi")
+        ax4.set_title(
+            "Hasil Inferensi dan Defuzzifikasi"
+        )
+
         ax4.legend()
         ax4.grid(True)
 
         st.pyplot(fig4)
         plt.close(fig4)
 
-        st.success(
-            "Perhitungan Fuzzy Mamdani berhasil dilakukan!"
-        )
 
 # ==========================================
-# INFORMASI METODE
+# 9. INFORMASI METODE
 # ==========================================
 
 st.divider()
 
 with st.expander("ℹ️ Tentang Metode Fuzzy Mamdani"):
-    st.write("""
-    Sistem ini menggunakan empat tahapan:
 
-    1. **Fuzzifikasi:** Mengubah input angka menjadi derajat keanggotaan fuzzy.
-    2. **Inferensi:** Memproses aturan IF-THEN menggunakan operator MIN.
-    3. **Agregasi:** Menggabungkan seluruh hasil aturan menggunakan operator MAX.
-    4. **Defuzzifikasi:** Mengubah hasil fuzzy menjadi angka menggunakan metode Centroid.
+    st.write("""
+    Sistem ini menggunakan empat tahapan utama:
+
+    1. **Fuzzifikasi:** Mengubah input angka menjadi
+       derajat keanggotaan fuzzy.
+
+    2. **Inferensi:** Memproses aturan IF-THEN
+       menggunakan operator MIN.
+
+    3. **Agregasi:** Menggabungkan hasil seluruh
+       aturan menggunakan operator MAX.
+
+    4. **Defuzzifikasi:** Mengubah hasil fuzzy menjadi
+       nilai tegas menggunakan metode Centroid.
     """)
